@@ -541,6 +541,10 @@ function write_blueprint_packages() {
             EXTENSION=""
         fi
 
+        if [ "$CLASS" = "ETC" ] && [ "$EXTENSION" = "xml" ]; then
+            PKGNAME="$BASENAME"
+        fi
+
         # Allow overriding module name
         STEM=
         R_ARG=
