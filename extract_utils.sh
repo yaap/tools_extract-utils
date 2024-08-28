@@ -626,6 +626,10 @@ function write_blueprint_packages() {
                     printf '\trequired: ["%s"],\n' "${REQUIREDPKG//,/\", \"}"
                 elif [[ "$ARG" =~ "SYMLINK" ]]; then
                     continue
+                elif [[ $ARG =~ "NODEXPO" ]]; then
+                    printf '\tdex_preopt: {\n'
+                    printf '\t\tenabled: false,\n'
+                    printf '\t},\n'
                 elif [ -n "$ARG" ]; then
                     USE_PLATFORM_CERTIFICATE="false"
                     printf '\tcertificate: "%s",\n' "$ARG"
@@ -694,11 +698,7 @@ function write_blueprint_packages() {
                 printf '\tfilename: "%s",\n' "$BASENAME"
             fi
         fi
-        if [ "$CLASS" = "APPS" ]; then
-            printf '\tdex_preopt: {\n'
-            printf '\t\tenabled: false,\n'
-            printf '\t},\n'
-        fi
+
         if [ "$CLASS" = "SHARED_LIBRARIES" ] || [ "$CLASS" = "EXECUTABLES" ] || [ "$CLASS" = "RFSA" ]; then
             if [ "$DIRNAME" != "." ]; then
                 if [ "$EXTENSION" = "sh" ]; then
