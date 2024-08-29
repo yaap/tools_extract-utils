@@ -630,6 +630,10 @@ function write_blueprint_packages() {
                     printf '\tdex_preopt: {\n'
                     printf '\t\tenabled: false,\n'
                     printf '\t},\n'
+                elif [[ "$ARG" =~ "OLIBS" ]]; then
+                    OPTIONAL_LIBS=${ARG#*=}
+                    OPTIONAL_LIBS=${OPTIONAL_LIBS//,/\", \"}
+                    printf '\toptional_uses_libs: ["%s"],\n' "${OPTIONAL_LIBS}"
                 elif [ -n "$ARG" ]; then
                     USE_PLATFORM_CERTIFICATE="false"
                     printf '\tcertificate: "%s",\n' "$ARG"
