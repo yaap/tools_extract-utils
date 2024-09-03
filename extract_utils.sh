@@ -1397,7 +1397,8 @@ function parse_file_list() {
             suffix_match_file ".jar" "$SRC_FILE" ||
             [ "$IS_GZ_PACKAGE" = true ] ||
             [[ "$TARGET_ENABLE_CHECKELF" == "true" &&
-                ("$SRC_FILE" == *".so" ||
+                ("$SRC_FILE" == *"lib/"*".so" ||
+                "$SRC_FILE" == *"lib64/"*".so" ||
                 "$SRC_FILE" == *"bin/"* ||
                 "$SRC_FILE" == *"lib/rfsa"*) ]] ||
             [[ "$SRC_FILE" == *"etc/vintf/manifest/"* ]]; then
