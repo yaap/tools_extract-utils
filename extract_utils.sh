@@ -473,6 +473,7 @@ function write_blueprint_packages() {
     local OVERRIDEPKG=
     local REQUIREDPKG=
     local DISABLE_CHECKELF=
+    local DISABLE_DEPS=
     local GENERATE_DEPS=
 
     if [ -z "$EXTRA" ]; then
@@ -564,6 +565,9 @@ function write_blueprint_packages() {
                 PKGNAME=${ARG#*=}
             elif [[ "$ARG" == "DISABLE_CHECKELF" ]]; then
                 DISABLE_CHECKELF="true"
+            elif [[ "$ARG" == "DISABLE_DEPS" ]]; then
+                DISABLE_CHECKELF="true"
+                GENERATE_DEPS=
             fi
         done
 
@@ -2458,6 +2462,10 @@ function set_as_module() {
 
 function set_disable_checkelf() {
     sed -i "s|${1}$|${1};DISABLE_CHECKELF|g" "${2}"
+}
+
+function set_disable_deps() {
+    sed -i "s|${1}$|${1};DISABLE_DEPS|g" "${2}"
 }
 
 function set_module() {
