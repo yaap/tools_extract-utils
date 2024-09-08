@@ -555,7 +555,10 @@ function write_blueprint_packages() {
             DISABLE_CHECKELF="true"
         fi
         for ARG in "${ARGS[@]}"; do
-            if [[ "$ARG" =~ "MODULE" ]]; then
+            if [[ "$ARG" =~ "MODULE_SUFFIX" ]]; then
+                STEM="$PKGNAME"
+                PKGNAME+=${ARG#*=}
+	    elif [[ "$ARG" =~ "MODULE" ]]; then
                 R_ARG="$ARG"
                 STEM="$PKGNAME"
                 PKGNAME=${ARG#*=}
@@ -2459,6 +2462,10 @@ function set_disable_checkelf() {
 
 function set_module() {
     sed -i "s|${1}$|${1};MODULE=${2}|g" "${3}"
+}
+
+function set_module_suffix() {
+    sed -i "s|${1}$|${1};MODULE_SUFFIX=${2}|g" "${3}"
 }
 
 function set_presigned() {
