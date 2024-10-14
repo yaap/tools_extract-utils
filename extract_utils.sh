@@ -542,6 +542,7 @@ function write_blueprint_packages() {
 
         # Allow overriding module name
         STEM=
+        R_ARG=
         if [ "$TARGET_ENABLE_CHECKELF" == "true" ]; then
             DISABLE_CHECKELF=
             GENERATE_DEPS="true"
@@ -550,12 +551,18 @@ function write_blueprint_packages() {
         fi
         for ARG in "${ARGS[@]}"; do
             if [[ "$ARG" =~ "MODULE" ]]; then
+                R_ARG="$ARG"
                 STEM="$PKGNAME"
                 PKGNAME=${ARG#*=}
             elif [[ "$ARG" == "DISABLE_CHECKELF" ]]; then
                 DISABLE_CHECKELF="true"
             fi
         done
+
+        if [ -n "$R_ARG" ]; then
+            # remove STEM from args
+            ARGS=( "${ARGS[@]/$R_ARG}" )
+        fi
 
         # Add to final package list
         PACKAGE_LIST+=("$PKGNAME")
