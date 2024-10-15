@@ -17,6 +17,7 @@ PRODUCT_PACKAGES_SRC=()
 PRODUCT_PACKAGES_DEST=()
 PRODUCT_PACKAGES_ARGS=()
 PRODUCT_SYMLINKS_LIST=()
+PRODUCT_GZ_LIST=()
 PACKAGE_LIST=()
 REQUIRED_PACKAGES_LIST=
 EXTRACT_SRC=
@@ -1371,6 +1372,13 @@ function parse_file_list() {
             SPEC="${SPEC#-}"
         fi
 
+        local IS_GZ_PACKAGE=
+        # if line starts with a +, it needs to unpacked
+        if [[ "$SPEC" =~ ^\+ ]]; then
+            IS_GZ_PACKAGE=true
+            SPEC="${SPEC#+}"
+        fi
+
         local STRIPPED_SPEC=$(spec "$SPEC")
         local SRC_FILE=$(spec_src_file "$STRIPPED_SPEC")
         local TARGET_FILE="$SRC_FILE"
@@ -1384,12 +1392,17 @@ function parse_file_list() {
         if suffix_match_file ".apex" "$SRC_FILE" ||
             suffix_match_file ".apk" "$SRC_FILE" ||
             suffix_match_file ".jar" "$SRC_FILE" ||
+            [ "$IS_GZ_PACKAGE" = true ] ||
             [[ "$TARGET_ENABLE_CHECKELF" == "true" &&
                 ("$SRC_FILE" == *".so" ||
                 "$SRC_FILE" == *"bin/"* ||
                 "$SRC_FILE" == *"lib/rfsa"*) ]] ||
             [[ "$SRC_FILE" == *"etc/vintf/manifest/"* ]]; then
             IS_PRODUCT_PACKAGE=true
+        fi
+
+        if [ "$IS_GZ_PACKAGE" = true ]; then
+            PRODUCT_GZ_LIST+=("$SRC_FILE")
         fi
 
         if [ "$IS_PRODUCT_PACKAGE" = true ]; then
@@ -2018,6 +2031,14 @@ function extract() {
         local DIR="${VENDOR_REPO_FILE%/*}"
         if [ ! -d "$DIR" ]; then
             mkdir -p "$DIR"
+        fi
+
+        # unpack if we chose to
+        if [[ "${PRODUCT_GZ_LIST[*]}" =~ $SPEC_SRC_FILE ]]; then
+            local gzSrc=$(find ${EXTRACT_SRC} -name "$(basename $SPEC_SRC_FILE)")
+            local gzDest="${gzSrc/.gz/}.tmp"
+            gzip -d -k -c "${gzSrc}" > "${gzDest}"
+            mv "${gzDest}" "${gzSrc}"
         fi
 
         # Check pinned files
