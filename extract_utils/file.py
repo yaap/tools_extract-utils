@@ -464,6 +464,7 @@ class FileList:
         self.package_files = FileTree()
         self.package_symlinks = SimpleFileList()
         self.copy_files = SimpleFileList()
+        self.all_files = SimpleFileList()
 
         # Combination of normal lines and files, split into sections,
         # used while updating
@@ -530,6 +531,8 @@ class FileList:
             or FileArgs.MAKE_COPY_RULE_ONLY in file.args
         ):
             self.copy_files.add(file)
+
+        self.all_files.add(file)
 
     def __add_line(self, line: str):
         if not is_valid_line(line):
