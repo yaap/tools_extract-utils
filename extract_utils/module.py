@@ -212,6 +212,8 @@ class FirmwareProprietaryFile(ProprietaryFile):
 
         for file in self.file_list.files:
             files.add(file.src)
+            if file.has_dst:
+                files.add(file.dst)
 
         return files
 
