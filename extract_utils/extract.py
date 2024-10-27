@@ -82,7 +82,7 @@ class ExtractCtx:
         self.firmware_files = firmware_files
 
 
-def is_extract_partition_file_name(
+def should_extract_partition_file_name(
     extract_partitions: Optional[List[str]],
     file_name: str,
 ):
@@ -108,7 +108,10 @@ def find_files_with_magic(
         if not file.is_file():
             continue
 
-        if not is_extract_partition_file_name(extract_partitions, file.name):
+        if not should_extract_partition_file_name(
+            extract_partitions,
+            file.name,
+        ):
             continue
 
         with open(file, 'rb') as f:
@@ -121,7 +124,7 @@ def find_files_with_magic(
 
 
 def find_files_with_ext(
-    extract_partitions: Optional[List[str]],
+    extract_partitions: List[str],
     input_path: str,
     ext: str,
 ):
@@ -130,7 +133,10 @@ def find_files_with_ext(
         if not file.is_file():
             continue
 
-        if not is_extract_partition_file_name(extract_partitions, file.name):
+        if not should_extract_partition_file_name(
+            extract_partitions,
+            file.name,
+        ):
             continue
 
         if file.name.endswith(ext):
@@ -139,37 +145,23 @@ def find_files_with_ext(
     return file_paths
 
 
-def find_sparse_raw_image_paths(
-    extract_partitions: Optional[List[str]],
-    input_path: str,
-):
+def find_sparse_raw_image_paths(extract_partitions: List[str], input_path: str):
     magic = bytes([0x3A, 0xFF, 0x26, 0xED])
     return find_files_with_magic(extract_partitions, input_path, magic)
 
 
-def find_erofs_paths(
-    extract_partitions: Optional[List[str]],
-    input_path: str,
-):
+def find_erofs_paths(extract_partitions: List[str], input_path: str):
     magic = bytes([0xE2, 0xE1, 0xF5, 0xE0])
     return find_files_with_magic(extract_partitions, input_path, magic, 1024)
 
 
-def find_ext4_paths(
-    extract_partitions: Optional[List[str]],
-    input_path: str,
-):
+def find_ext4_paths(extract_partitions: List[str], input_path: str):
     magic = bytes([0x53, 0xEF])
     return find_files_with_magic(extract_partitions, input_path, magic, 1080)
 
 
-def find_payload_path(input_path: str) -> Optional[str]:
-    payload_paths = find_files_with_magic(None, input_path, b'CrAU')
-    if payload_paths:
-        assert len(payload_paths) == 1
-        return payload_paths[0]
-
-    return None
+def find_payload_paths(extract_partitions: List[str], input_path: str):
+    return find_files_with_magic(extract_partitions, input_path, b'CrAU')
 
 
 def find_super_img_path(input_path: str) -> Optional[str]:
@@ -452,10 +444,11 @@ def should_extract_file_path(
 ):
     file_name = path.basename(file_path)
 
-    partitions = ctx.extract_partitions + extract_partitions
-    for partition in partitions:
-        if file_name.startswith(f'{partition}.'):
-            return True
+    if should_extract_partition_file_name(
+        ctx.extract_partitions + extract_partitions,
+        file_name,
+    ):
+        return True
 
     if file_name in ctx.firmware_files + extract_file_names:
         return True
@@ -613,13 +606,14 @@ def extract_image(source: str, ctx: ExtractCtx, dump_dir: str):
             dump_dir,
         )
 
-    payload_bin_path = find_payload_path(dump_dir)
-    if payload_bin_path:
-        print_file_paths([payload_bin_path], 'payload.bin')
-        extract_payload_bin(ctx, payload_bin_path, dump_dir)
-        remove_file_paths([payload_bin_path])
+    payload_bin_paths = find_payload_paths(extract_file_names, dump_dir)
+    if payload_bin_paths:
+        assert len(payload_bin_paths) == 1
+        print_file_paths(payload_bin_paths, 'payload.bin')
+        extract_payload_bin(ctx, payload_bin_paths[0], dump_dir)
+        remove_file_paths(payload_bin_paths)
 
-    sparse_raw_paths = find_sparse_raw_image_paths(['super'], dump_dir)
+    sparse_raw_paths = find_sparse_raw_image_paths(extract_partitions, dump_dir)
     if sparse_raw_paths:
         print_file_paths(sparse_raw_paths, 'sparse raw')
         # Single sparse files are renamed to .sparse to avoid naming conflicts
@@ -653,19 +647,13 @@ def extract_image(source: str, ctx: ExtractCtx, dump_dir: str):
         extract_sparse_data_imgs(sparse_data_paths, dump_dir)
         remove_file_paths(sparse_data_paths)
 
-    erofs_paths = find_erofs_paths(
-        ctx.extract_partitions,
-        dump_dir,
-    )
+    erofs_paths = find_erofs_paths(ctx.extract_partitions, dump_dir)
     if erofs_paths:
         print_file_paths(erofs_paths, 'EROFS')
         extract_erofs(erofs_paths, dump_dir)
         remove_file_paths(erofs_paths)
 
-    ext4_paths = find_ext4_paths(
-        ctx.extract_partitions,
-        dump_dir,
-    )
+    ext4_paths = find_ext4_paths(ctx.extract_partitions, dump_dir)
     if ext4_paths:
         print_file_paths(ext4_paths, 'EXT4')
         extract_ext4(ext4_paths, dump_dir)
