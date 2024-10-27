@@ -54,6 +54,7 @@ class FileArgs(str, Enum):
     PRESIGNED = 'PRESIGNED'
     REQUIRED = 'REQUIRED'
     SYMLINK = 'SYMLINK'
+    TRYSRCFIRST = 'TRYSRCFIRST'
 
 
 FILE_ARGS_TYPE_MAP = {
@@ -70,6 +71,7 @@ FILE_ARGS_TYPE_MAP = {
     FileArgs.PRESIGNED: True,
     FileArgs.REQUIRED: list,
     FileArgs.SYMLINK: list,
+    FileArgs.TRYSRCFIRST: True,
 }
 
 assert len(FileArgs) == len(FILE_ARGS_TYPE_MAP)

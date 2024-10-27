@@ -51,13 +51,17 @@ class Source(ABC):
         file: File,
         file_copy_path: str,
     ) -> bool:
-        # TODO: try source before destination by default or allow changing
+        if FileArgs.TRYSRCFIRST in file.args:
+            first = file.src
+            second = file.dst
+        else:
+            first = file.dst
+            second = file.src
 
-        if self._copy_file_path(file.dst, file_copy_path):
+        if self._copy_file_path(first, file_copy_path):
             return True
 
-        # dst is different from src, try src too
-        if file.has_dst and self._copy_file_path(file.src, file_copy_path):
+        if file.has_dst and self._copy_file_path(second, file_copy_path):
             return True
 
         return False
