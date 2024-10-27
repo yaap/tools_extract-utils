@@ -188,11 +188,7 @@ class DiskSource(Source):
         super().__init__(source_path)
 
     def _copy_firmware(self, file: File, target_file_path: str) -> bool:
-        # dst is different from src, try src first
-        if file.has_dst and self._copy_file_path(file.src, target_file_path):
-            return True
-
-        return self._copy_file_path(file.dst, target_file_path)
+        return self._copy_file_to_path(file, target_file_path)
 
     def _copy_file_path(
         self,
