@@ -8,7 +8,7 @@ from __future__ import annotations
 from os import path
 from typing import Dict
 
-patchelf_versions = ['0_8', '0_9', '0_17_2']
+patchelf_versions = ['0_8', '0_9', '0_17_2', '0_18']
 DEFAULT_PATCHELF_VERSION = '0_9'
 
 script_dir = path.dirname(path.realpath(__file__))
