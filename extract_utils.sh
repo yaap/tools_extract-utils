@@ -1563,6 +1563,8 @@ function get_file() {
         for SOURCE in "${SOURCES[@]}"; do
             if [ -f "$SRC/$SOURCE" ] || [ -d "$SRC/$SOURCE" ]; then
                 get_file_helper "$SRC/$SOURCE" "$2" 2>/dev/null && return 0
+            elif [ -f $SRC/$SOURCE ] || [ -d $SRC/$SOURCE ]; then
+                get_file_helper $SRC/$SOURCE "$2" 2>/dev/null && return 0
             fi
         done
 
