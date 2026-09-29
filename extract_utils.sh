@@ -15,6 +15,7 @@ PRODUCT_PACKAGES_FIXUP_HASHES=()
 PRODUCT_PACKAGES_SRC=()
 PRODUCT_PACKAGES_DEST=()
 PRODUCT_PACKAGES_ARGS=()
+PRODUCT_DUMMY_SHARED_LIBS=()
 PRODUCT_SYMLINKS_LIST=()
 PRODUCT_GZ_LIST=()
 PACKAGE_LIST=()
@@ -1004,6 +1005,106 @@ function write_symlink_packages() {
     write_package_definition "${SYMLINK_PACKAGES[@]}" >>"$PRODUCTMK"
 }
 
+function dummy_prefix_match() {
+    local PREFIX="$1"
+    local NEW_ARRAY=()
+    local COUNT=${#PRODUCT_DUMMY_SHARED_LIBS[@]}
+
+    for ((i = 1; i < COUNT + 1; i++)); do
+        local ENTRY="${PRODUCT_DUMMY_SHARED_LIBS[$i - 1]}"
+        local FILE=$(spec "$ENTRY")
+        if [[ "$FILE" =~ ^"$PREFIX" ]]; then
+            local SPEC_ARGS=$(spec_target_args "$FILE" "$ENTRY")
+            if [ -z "$SPEC_ARGS" ]; then
+                NEW_ARRAY+=("${FILE#"$PREFIX"}")
+            else
+                NEW_ARRAY+=("${FILE#"$PREFIX"};${SPEC_ARGS}")
+            fi
+        fi
+    done
+
+    printf '%s\n' "${NEW_ARRAY[@]}" | LC_ALL=C sort
+}
+
+function write_dummy_shared_lib_packages() {
+    local PARTITION="$1"
+    local MULTILIB="$2"
+    local FILELIST="$3"
+
+    local FILE=
+    local PKGNAME=
+    local STEM=
+
+    while IFS= read -r P; do
+        if [ "$P" = "" ]; then
+            continue
+        fi
+
+        FILE=$(spec "$P")
+        local SPEC_ARGS=$(spec_target_args "$FILE" "$P")
+        local ARGS=(${SPEC_ARGS//;/ })
+        PKGNAME="${FILE##*/}"
+        PKGNAME="${PKGNAME%.*}"
+        STEM=
+
+        for ARG in "${ARGS[@]}"; do
+            if [[ "$ARG" =~ "MODULE_SUFFIX" ]]; then
+                STEM="$PKGNAME"
+                PKGNAME+=${ARG#*=}
+            elif [[ "$ARG" =~ "MODULE" ]]; then
+                STEM="$PKGNAME"
+                PKGNAME=${ARG#*=}
+            fi
+        done
+
+        printf 'cc_library_shared {\n'
+        printf '\tname: "%s",\n' "$PKGNAME"
+        if [ -n "$STEM" ]; then
+            printf '\tstem: "%s",\n' "$STEM"
+        fi
+        printf '\tcompile_multilib: "%s",\n' "$MULTILIB"
+        if [ "$PARTITION" = "vendor" ]; then
+            printf '\tsoc_specific: true,\n'
+        elif [ "$PARTITION" = "product" ]; then
+            printf '\tproduct_specific: true,\n'
+        elif [ "$PARTITION" = "system_ext" ]; then
+            printf '\tsystem_ext_specific: true,\n'
+        elif [ "$PARTITION" = "odm" ]; then
+            printf '\tdevice_specific: true,\n'
+        elif [ "$PARTITION" = "recovery" ]; then
+            printf '\trecovery: true,\n'
+        fi
+        printf '}\n\n'
+    done <<<"$FILELIST"
+}
+
+function write_dummy_shared_libs() {
+    local COUNT=${#PRODUCT_DUMMY_SHARED_LIBS[@]}
+
+    if [ "$COUNT" = "0" ]; then
+        return 0
+    fi
+
+    for PARTITION in "" "system" "vendor" "product" "system_ext" "odm" "recovery"; do
+        local SRC_REL="$PARTITION"
+        if [ -n "$SRC_REL" ]; then
+            SRC_REL+="/"
+        fi
+
+        local T_LIB32=$(dummy_prefix_match "$SRC_REL"lib/)
+        local T_LIB64=$(dummy_prefix_match "$SRC_REL"lib64/)
+        local MULTILIBS=$(do_comm -12 "$T_LIB32" "$T_LIB64")
+        local LIB32=$(do_comm -23 "$T_LIB32" "$MULTILIBS")
+        local LIB64=$(do_comm -23 "$T_LIB64" "$MULTILIBS")
+
+        {
+            write_dummy_shared_lib_packages "$PARTITION" "both" "$MULTILIBS"
+            write_dummy_shared_lib_packages "$PARTITION" "32" "$LIB32"
+            write_dummy_shared_lib_packages "$PARTITION" "64" "$LIB64"
+        } >>"$ANDROIDBP"
+    done
+}
+
 #
 # write_single_product_copy_files:
 #
@@ -1375,6 +1476,7 @@ function parse_file_list() {
     PRODUCT_PACKAGES_SRC=()
     PRODUCT_PACKAGES_DEST=()
     PRODUCT_PACKAGES_ARGS=()
+    PRODUCT_DUMMY_SHARED_LIBS=()
     PRODUCT_SYMLINKS_LIST=()
     PRODUCT_COPY_FILES_HASHES=()
     PRODUCT_COPY_FILES_FIXUP_HASHES=()
@@ -1424,6 +1526,19 @@ function parse_file_list() {
         if [ "$SRC_FILE" != "$SPEC" ]; then
             TARGET_FILE=$(spec_target_file "$STRIPPED_SPEC")
             ARGS=$(spec_target_args "$STRIPPED_SPEC" "$SPEC")
+        fi
+
+        local IS_DUMMY_SHARED_LIB=
+        for ARG in ${ARGS//;/ }; do
+            if [ "$ARG" = "DUMMY_SHARED_LIB" ]; then
+                IS_DUMMY_SHARED_LIB=true
+                break
+            fi
+        done
+
+        if [ "$IS_DUMMY_SHARED_LIB" = true ]; then
+            PRODUCT_DUMMY_SHARED_LIBS+=("$TARGET_FILE;$ARGS")
+            continue
         fi
 
         # if line contains apex, apk, jar or vintf fragment, it needs to be packaged
@@ -1476,6 +1591,7 @@ function write_makefiles() {
     write_product_copy_files
     write_product_packages
     write_symlink_packages
+    write_dummy_shared_libs
 }
 
 #
