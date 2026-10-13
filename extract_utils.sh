@@ -880,6 +880,7 @@ function write_product_packages() {
         write_blueprint_packages "APEX" "system"
         write_blueprint_packages "APEX" "vendor"
         write_blueprint_packages "APEX" "system_ext"
+        write_blueprint_packages "APEX" "product"
     } >>"$ANDROIDBP"
 
     # Apps
